@@ -56,6 +56,10 @@ class ProtocolMessagesHandler:
             raise ProtocolException() from error
         return parsed_fields
 
+    def parse_ready_message(self, message):
+        # TODO: Check if it's actually ready
+        return True
+
     def parse_message_type(self):
         pass
 
