@@ -7,14 +7,26 @@ import sys
 
 
 PORT = 3000
-IP = "127.0.0.1"
+IP = "192.168.77.21"
 VERSION = "1.0"
 AVAILABLE_SUBMARINE_SIZES = [2, 2, 3, 3, 4, 5]
 WIDTH = 10
 HEIGHT = 10
-NO_SUBMARINE = "-"
+NO_SUBMARINE = "0"
 SUBMARINE = "@"
 BOMBED_SUBMARINE = "*"
+DIRECTION_TO_BODY = {Direction.RIGHT: "-",
+                     Direction.DOWN: "|",
+                     Direction.LEFT: "-",
+                     Direction.UP: "|"}
+Direction_TO_HEAD = {Direction.RIGHT: "<",
+                     Direction.DOWN: "^",
+                     Direction.LEFT: ">",
+                     Direction.UP: "V"}
+Direction_TO_TAIL = {Direction.RIGHT: ">",
+                     Direction.DOWN: "V",
+                     Direction.LEFT: "<",
+                     Direction.UP: "^"}
 
 
 class BattleshipGame:
@@ -39,6 +51,7 @@ class BattleshipGame:
         print(f"Opponent tried to bomb at {location}")
         status = self.home_board.hit_at_location(location)
         self.connection_handler.send_message(self.protocol_handler.get_answer_message(status, location))
+        return status
 
 
 def connect_to_opponent(protocol_handler):
@@ -77,7 +90,9 @@ def print_home_board(home_board):
         for i in range(submarine.size):
             x_value = submarine.start_location[X] + i * DIRECTION_TO_VALUES[submarine.direction][X]
             y_value = submarine.start_location[Y] + i * DIRECTION_TO_VALUES[submarine.direction][Y]
-            board[x_value][y_value] = BOMBED_SUBMARINE if (x_value, y_value) in submarine.hit_locations else SUBMARINE
+            board[x_value][y_value] = BOMBED_SUBMARINE if (x_value, y_value) in submarine.hit_locations else \
+                (DIRECTION_TO_BODY[submarine.direction] if i != 0 and i != submarine.size - 1 else \
+                     (Direction_TO_HEAD[submarine.direction] if i == 0 else Direction_TO_TAIL[submarine.direction]))
     for i in range(home_board.height):
         temp_buffer = ""
         for j in range(home_board.width):
@@ -117,18 +132,25 @@ def game_loop(battleship_game, my_turn):
         print_home_board(battleship_game.home_board)
         print_away_board(battleship_game.away_board)
         if my_turn:
-            if battleship_game.guess_battleship_location(get_location_from_user()) == Status.VICTORY:
+            status = battleship_game.guess_battleship_location(get_location_from_user())
+            if status == Status.VICTORY:
                 game_on = False
+            elif status == Status.CORRECT or status == Status.FULL_SUB:
+                my_turn = not my_turn
         else:
             print("Waiting for opponent to send bombing location")
-            if battleship_game.answer_battleship_guess() == Status.VICTORY:
+            status = battleship_game.answer_battleship_guess()
+            if status == Status.VICTORY:
                 game_on = False
+            elif status == Status.CORRECT or status == Status.FULL_SUB:
+                my_turn = not my_turn
         my_turn = not my_turn
 
 
 def init_default_board():
     home_board = HomeBoard(WIDTH, HEIGHT)
-    home_board.add_submarine(Submarine((0, 0), 5, Direction.DOWN))
+    home_board.add_submarine(Submarine((0, 1), 5, Direction.DOWN))
+    home_board.add_submarine(Submarine((5, 9), 5, Direction.RIGHT))
     return home_board
 
 
